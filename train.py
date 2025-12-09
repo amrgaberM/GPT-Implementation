@@ -4,42 +4,41 @@ from torch.optim import AdamW
 from src.model import GPT
 from src.dataset import TextDataset
 from src.config import cfg
-from tqdm import tqdm # Import the progress bar library
+from tqdm import tqdm
 import os
 
-# Ensure the models directory exists so we don't crash again!
-if not os.path.exists("models"):
-    os.makedirs("models")
+# Ensure the models folder exists
+os.makedirs(cfg.model_save_dir, exist_ok=True)
 
 def train():
-    # 1. Setup Device
-    device = cfg.device
+    device = torch.device(cfg.device)
     print(f"Using device: {device}")
-
-    # 2. Prepare Data
+    
+    # Load dataset
     print("Loading dataset...")
     dataset = TextDataset("data/input.txt", cfg.block_size)
     dataloader = DataLoader(dataset, batch_size=cfg.batch_size, shuffle=True)
-
-    # 3. Initialize Model
-    model = GPT().to(device)
     
-    # Calculate model size
+    # Initialize model
+    model = GPT().to(device)
     num_params = sum(p.numel() for p in model.parameters())
     print(f"Model Parameters: {num_params / 1e6:.1f} Million")
-
-    # 4. Optimizer
+    
+    # Optimizer
     optimizer = AdamW(model.parameters(), lr=cfg.learning_rate)
-
-    # 5. Training Loop
+    
+    # Gradient accumulation & mixed precision
+    accumulation_steps = cfg.accumulation_steps
+    use_amp = device.type == 'cuda'
+    scaler = torch.cuda.amp.GradScaler() if use_amp else None
+    
     model.train()
-    print("Starting training...")
-    
     data_iter = iter(dataloader)
-    
-    # WRAPPING THE RANGE WITH TQDM CREATES THE BAR
-    # desc="Training" gives the bar a title
     progress_bar = tqdm(range(cfg.max_iters), desc="Training")
+    accumulated_loss = 0.0
+    
+    # Checkpoint steps (quarter, half, final)
+    checkpoint_steps = [cfg.max_iters // 4, cfg.max_iters // 2, cfg.max_iters]
     
     for step in progress_bar:
         try:
@@ -47,27 +46,59 @@ def train():
         except StopIteration:
             data_iter = iter(dataloader)
             inputs, targets = next(data_iter)
-            
+        
         inputs, targets = inputs.to(device), targets.to(device)
         
-        optimizer.zero_grad()
-        logits, loss = model(inputs, targets=targets)
-        loss.backward()
-        optimizer.step()
+        # Forward pass (mixed precision if CUDA)
+        if use_amp:
+            with torch.cuda.amp.autocast():
+                logits, loss = model(inputs, targets=targets)
+                loss = loss / accumulation_steps
+        else:
+            logits, loss = model(inputs, targets=targets)
+            loss = loss / accumulation_steps
         
-        # Update the progress bar description with the current loss
-        if step % 100 == 0:
-            progress_bar.set_postfix(loss=f"{loss.item():.4f}")
+        # Backward pass
+        if use_amp:
+            scaler.scale(loss).backward()
+        else:
+            loss.backward()
+        
+        accumulated_loss += loss.item()
+        
+        # Optimizer step after accumulation
+        if (step + 1) % accumulation_steps == 0:
+            if use_amp:
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                optimizer.step()
+            optimizer.zero_grad()
             
-        # Save checkpoint halfway
-        if step == cfg.max_iters // 2:
-            # We use tqdm.write so it doesn't break the progress bar layout
-            tqdm.write("Saving checkpoint...")
-            torch.save(model.state_dict(), cfg.model_path)
-
-    # 6. Save Final Model
-    torch.save(model.state_dict(), cfg.model_path)
-    print(f"\nTraining Complete! Model saved to {cfg.model_path}")
+            # Update progress bar
+            if (step + 1) % 100 == 0:  # Show every 100 steps
+                progress_bar.set_postfix(loss=f"{accumulated_loss:.4f}")
+            accumulated_loss = 0.0
+        
+        # Save checkpoints
+        if step + 1 in checkpoint_steps:
+            checkpoint_path = os.path.join(cfg.model_save_dir, f"model_step{step+1}.pth")
+            torch.save(model.state_dict(), checkpoint_path)
+            tqdm.write(f"Checkpoint saved at step {step+1} → {checkpoint_path}")
+    
+    # Handle any remaining gradients
+    if (step + 1) % accumulation_steps != 0:
+        if use_amp:
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            optimizer.step()
+        optimizer.zero_grad()
+    
+    # Final save
+    final_path = os.path.join(cfg.model_save_dir, "model_final.pth")
+    torch.save(model.state_dict(), final_path)
+    print(f"\nTraining Complete! Model saved to {final_path}")
 
 if __name__ == "__main__":
     train()

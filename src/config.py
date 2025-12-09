@@ -1,37 +1,43 @@
 import torch
+import os
 
 class ModelConfig:
     """
     Settings for our GPT-style Transformer.
-    You can tweak these numbers depending on your GPU memory.
+    Can tweak depending on GPU memory and training needs.
     """
     # -------------------------------------------------------------------------
     # 1. Model Structure
     # -------------------------------------------------------------------------
-    vocab_size = 50257        # Total number of unique tokens the model can understand
-    n_embd = 512              # Size of each token’s embedding vector (smaller = uses less GPU memory)
-    n_head = 8                # How many attention “heads” the model uses in each layer
-    n_layer = 6               # Number of Transformer layers (more layers = bigger model)
-    block_size = 256          # How many tokens the model looks back at once (context window)
-    dropout = 0.1             # How much we randomly drop connections to prevent overfitting
+    vocab_size = 50257        # Total number of unique tokens
+    n_embd = 768              # Embedding size
+    n_head = 12               # Attention heads
+    n_layer = 12              # Transformer layers
+    block_size = 1024         # Context window
+    dropout = 0.1             # Dropout rate
 
     # -------------------------------------------------------------------------
     # 2. Training Settings
     # -------------------------------------------------------------------------
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'  # Use GPU if available, else CPU
-    batch_size = 16           # Number of sequences processed at once (smaller = fits in 4GB GPU)
-    learning_rate = 3e-4      # How fast the model updates weights; standard value for GPT training
-    max_iters = 5000          # Total number of training steps
-    eval_interval = 500       # Check performance every 500 steps
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    batch_size = 4
+    learning_rate = 3e-4
+    max_iters = 10000
+    eval_interval = 500
+    accumulation_steps = 4    # For gradient accumulation
 
     # -------------------------------------------------------------------------
     # 3. File Paths
     # -------------------------------------------------------------------------
-    model_path = "models/transformer_model.pth"  # Where the trained model will be saved
+    model_save_dir = "/content/drive/My Drive/Colab_Models/Shakespeare_V2"  # Folder for all checkpoints
+    model_path = os.path.join(model_save_dir, "model_final.pth")             # Final model
 
     def __init__(self):
-        # Make sure the embedding size can be evenly split across attention heads
+        # Ensure embedding can be split across attention heads
         assert self.n_embd % self.n_head == 0, "Embedding size must be divisible by number of heads"
+        # Make sure the save folder exists
+        os.makedirs(self.model_save_dir, exist_ok=True)
+        print(f"Model checkpoints will be saved to: {self.model_save_dir}")
 
-# Create a global instance so other scripts can easily import these settings
+# Global instance for easy import
 cfg = ModelConfig()
