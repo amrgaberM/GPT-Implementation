@@ -29,8 +29,8 @@ class ModelConfig:
     # -------------------------------------------------------------------------
     # 3. File Paths
     # -------------------------------------------------------------------------
-    model_save_dir = "/content/drive/My Drive/Colab_Models/Shakespeare_V2"  # Folder for all checkpoints
-    model_path = os.path.join(model_save_dir, "model_final.pth")             # Final model
+    model_save_dir = "GPT-Implementation/models"  # Folder for all checkpoints
+    model_path = os.path.join(model_save_dir, "model_finalV2.pth")             # Final model
 
     def __init__(self):
         # Ensure embedding can be split across attention heads
