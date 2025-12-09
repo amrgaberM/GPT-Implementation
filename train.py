@@ -38,7 +38,7 @@ def train():
     accumulated_loss = 0.0
     
     # Checkpoint steps (quarter, half, final)
-    checkpoint_steps = [cfg.max_iters // 4, cfg.max_iters // 2, cfg.max_iters]
+    #checkpoint_steps = [cfg.max_iters // 4, cfg.max_iters // 2, cfg.max_iters]
     
     for step in progress_bar:
         try:
@@ -81,10 +81,10 @@ def train():
             accumulated_loss = 0.0
         
         # Save checkpoints
-        if step + 1 in checkpoint_steps:
-            checkpoint_path = os.path.join(cfg.model_save_dir, f"model_step{step+1}.pth")
-            torch.save(model.state_dict(), checkpoint_path)
-            tqdm.write(f"Checkpoint saved at step {step+1} → {checkpoint_path}")
+        #if step + 1 in checkpoint_steps:
+            #checkpoint_path = os.path.join(cfg.model_save_dir, f"model_step{step+1}.pth")
+            #torch.save(model.state_dict(), checkpoint_path)
+            #tqdm.write(f"Checkpoint saved at step {step+1} → {checkpoint_path}")
     
     # Handle any remaining gradients
     if (step + 1) % accumulation_steps != 0:
@@ -96,7 +96,7 @@ def train():
         optimizer.zero_grad()
     
     # Final save
-    final_path = os.path.join(cfg.model_save_dir, "model_final.pth")
+    final_path = cfg.model_path
     torch.save(model.state_dict(), final_path)
     print(f"\nTraining Complete! Model saved to {final_path}")
 

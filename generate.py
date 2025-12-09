@@ -21,7 +21,7 @@ def generate_text():
     model.eval() # Switch to evaluation mode (turns off Dropout)
 
     # 3. Prompt the model
-    start_text = "The king said"
+    start_text = "To be or not to be"
     print(f"\nPrompt: '{start_text}'")
     
     # Encode prompt
