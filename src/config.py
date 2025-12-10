@@ -31,7 +31,7 @@ class ModelConfig:
     # -------------------------------------------------------------------------
     #model_save_dir = "/models"  # Folder for all checkpoints
     #model_path = os.path.join(model_save_dir, "model_finalV2.pth")
-    model_path = "models\model_finalV2.pth"             # Final model
+    model_path = "models/model_finalV2.pth"             # Final model
 
     def __init__(self):
         # Ensure embedding can be split across attention heads
