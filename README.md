@@ -112,9 +112,6 @@ Generates attention maps and performs a depth scan.
 
 *Built from first principles using PyTorch.*
 
-```
 
-This version is fully **GitHub-README-ready**, with clear headings, badges, tables, and step-by-step instructions.  
 
-If you want, I can also **add a visually appealing badge section and usage GIFs** to make it even more professional and engaging. Do you want me to do that?
-```
+
